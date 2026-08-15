@@ -70,6 +70,16 @@ def _upsert_transaction(db: Session, tx_data: dict, account_by_plaid_id: dict[st
     existing.plaid_category_primary = pfc.get("primary")
     existing.plaid_category_detailed = pfc.get("detailed")
 
+    # A pending transaction's amount can change once it posts (e.g. a gas
+    # station hold finalizing) — keep a stale split_share from exceeding the
+    # corrected amount, which would otherwise show a negative "owed" amount.
+    if existing.split_share is not None:
+        if existing.amount <= 0:
+            existing.split_share = None
+            existing.split_settled = False
+        elif existing.split_share > existing.amount:
+            existing.split_share = existing.amount
+
     # Plaid resends a transaction as "modified" surprisingly often (enrichment
     # updates, pending->posted transitions) — once you've picked a category
     # by hand, later syncs must not silently overwrite it.

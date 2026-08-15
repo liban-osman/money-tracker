@@ -62,10 +62,15 @@ def update_transaction(
         transaction.notes = updates["notes"]
     if "split_share" in updates:
         share = updates["split_share"]
-        if share is not None and (share < 0 or share > abs(transaction.amount)):
-            raise HTTPException(
-                status_code=400, detail="split_share must be between 0 and the transaction amount"
-            )
+        if share is not None:
+            if transaction.amount <= 0:
+                raise HTTPException(
+                    status_code=400, detail="Only positive-amount expenses can be split"
+                )
+            if share < 0 or share > transaction.amount:
+                raise HTTPException(
+                    status_code=400, detail="split_share must be between 0 and the transaction amount"
+                )
         transaction.split_share = share
         if share is None:
             transaction.split_settled = False

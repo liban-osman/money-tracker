@@ -31,6 +31,7 @@ export interface Transaction {
   split_share: number | null;
   split_settled: boolean;
   owed_amount: number | null;
+  category_overridden: boolean;
 }
 
 export interface CategoryBreakdown {

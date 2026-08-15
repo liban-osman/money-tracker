@@ -407,7 +407,7 @@ export default function Transactions() {
                 </td>
                 <td className="w-44 px-5 py-3 text-right">
                   <p className="font-medium text-white">{formatCurrency(-tx.amount)}</p>
-                  {!tx.is_transfer && kindOf(tx) === "expense" && (
+                  {!tx.is_transfer && kindOf(tx) === "expense" && tx.amount > 0 && (
                     <SplitControl
                       transaction={tx}
                       onSave={(share) => splitMutation.mutate({ id: tx.id, body: { split_share: share } })}

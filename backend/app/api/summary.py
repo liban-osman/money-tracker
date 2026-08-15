@@ -252,7 +252,9 @@ def recurring_expenses(min_months: int = 3, db: Session = Depends(get_db)) -> li
         if len(months) / span < 0.6:
             continue
 
-        amounts = [t.amount for t in txs]
+        # A fronted group expense only really costs you split_share — same
+        # adjustment as everywhere else amounts get totaled.
+        amounts = [t.split_share if t.split_share is not None else t.amount for t in txs]
         avg_amount = sum(amounts) / len(amounts)
         # A fixed bill charges close to the same amount every time — a grocery
         # store or gas station visited often is frequent but not "recurring"
@@ -263,6 +265,7 @@ def recurring_expenses(min_months: int = 3, db: Session = Depends(get_db)) -> li
             continue
 
         latest_tx = max(txs, key=lambda t: t.date)
+        latest_amount = latest_tx.split_share if latest_tx.split_share is not None else latest_tx.amount
         results.append(
             RecurringMerchant(
                 merchant_name=latest_tx.merchant_name or latest_tx.name,
@@ -270,7 +273,7 @@ def recurring_expenses(min_months: int = 3, db: Session = Depends(get_db)) -> li
                 occurrences=len(txs),
                 months_active=len(months),
                 average_amount=round(avg_amount, 2),
-                last_amount=latest_tx.amount,
+                last_amount=latest_amount,
                 last_date=latest_tx.date.isoformat(),
             )
         )
