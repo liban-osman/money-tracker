@@ -20,6 +20,15 @@ def _with_live_price(holding: Holding) -> HoldingResponse:
         data.market_value_cad = round(holding.quantity, 2)
         return data
 
+    if holding.asset_type == "rewards_points":
+        # Quantity is the points balance; average_cost is repurposed as your
+        # estimated redemption value per point (e.g. Amex MR ~= $0.01 CAD),
+        # since points have no public market price and no cost basis.
+        value_per_point = holding.average_cost if holding.average_cost is not None else 0.01
+        data.price_cad = round(value_per_point, 4)
+        data.market_value_cad = round(holding.quantity * value_per_point, 2)
+        return data
+
     price = market_data_service.price_in_cad(holding.symbol, holding.asset_type)
 
     if price is None:

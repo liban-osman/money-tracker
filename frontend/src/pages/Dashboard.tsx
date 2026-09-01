@@ -41,28 +41,19 @@ function StatTile({
   label,
   value,
   tone,
-  active,
-  onClick,
 }: {
   label: string;
   value: number;
   tone?: "good" | "bad";
-  active?: boolean;
-  onClick?: () => void;
 }) {
   const color = tone === "good" ? STATUS.good : tone === "bad" ? STATUS.critical : CHART_INK.primary;
   return (
-    <button
-      onClick={onClick}
-      className={`rounded-2xl bg-[#161b22] p-5 text-left shadow-sm transition-shadow ${
-        active ? "ring-2 ring-emerald-500" : ""
-      } ${onClick ? "cursor-pointer hover:shadow-md" : ""}`}
-    >
+    <div className="rounded-2xl bg-[#161b22] p-5 text-left shadow-sm">
       <p className="text-xs font-medium uppercase tracking-wide text-[#8b949e]">{label}</p>
       <p className="mt-1 text-2xl font-semibold" style={{ color }}>
         {formatCurrency(value)}
       </p>
-    </button>
+    </div>
   );
 }
 
@@ -151,18 +142,8 @@ export default function Dashboard() {
       {summary && (
         <>
           <div className="mt-6 grid grid-cols-3 gap-4">
-            <StatTile
-              label="Income"
-              value={summary.income}
-              active={typeFilter === "income"}
-              onClick={() => setTypeFilter("income")}
-            />
-            <StatTile
-              label="Expenses"
-              value={summary.expenses}
-              active={typeFilter === "expense"}
-              onClick={() => setTypeFilter("expense")}
-            />
+            <StatTile label="Income" value={summary.income} />
+            <StatTile label="Expenses" value={summary.expenses} />
             <StatTile
               label="Net"
               value={summary.net}
@@ -170,7 +151,80 @@ export default function Dashboard() {
             />
           </div>
 
-          <div className="mt-3 grid grid-cols-3 gap-4">
+          <div className="mt-6 rounded-2xl bg-[#161b22] p-6 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-semibold text-white">Breakdown</h2>
+                <p className="mt-0.5 text-xs text-[#8b949e]">
+                  Total: <span className="font-medium text-[#c9d1d9]">{formatCurrency(filteredTotal)}</span>
+                  {typeFilter === "expense" && (
+                    <span className="ml-2 text-[#8b949e]">
+                      red = above your 6-month average · green = below
+                    </span>
+                  )}
+                </p>
+              </div>
+              <div className="flex gap-1 rounded-full bg-[#21262d] p-0.5">
+                {FILTERS.map((f) => (
+                  <button
+                    key={f.key}
+                    onClick={() => setTypeFilter(f.key)}
+                    className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
+                      typeFilter === f.key
+                        ? "bg-[#30363d] text-emerald-400 shadow-sm"
+                        : "text-[#8b949e]"
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {categoryData.length === 0 ? (
+              <p className="mt-4 text-sm text-[#8b949e]">Nothing here for this month.</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={Math.max(200, categoryData.length * 36)}>
+                <BarChart data={categoryData} layout="vertical" margin={{ left: 24, top: 12 }}>
+                  <CartesianGrid horizontal={false} stroke={CHART_INK.gridline} />
+                  <XAxis
+                    type="number"
+                    tickFormatter={(v) => formatCurrency(v)}
+                    stroke={CHART_INK.muted}
+                    fontSize={12}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="category_name"
+                    width={110}
+                    stroke={CHART_INK.muted}
+                    fontSize={12}
+                  />
+                  <Tooltip
+                    formatter={(v: number, _n, item) => {
+                      const pct = item?.payload?.deltaPct;
+                      const suffix =
+                        pct != null ? ` (${pct > 0 ? "+" : ""}${pct.toFixed(0)}% vs avg)` : "";
+                      return formatCurrency(v) + suffix;
+                    }}
+                  />
+                  <Bar dataKey="total" radius={[0, 4, 4, 0]}>
+                    {categoryData.map((c) => {
+                      let fill: string = CATEGORICAL[0];
+                      if (c.kind === "income") {
+                        fill = CATEGORICAL[2];
+                      } else if (typeFilter === "expense" && c.deltaPct != null) {
+                        if (c.deltaPct > 15) fill = STATUS.critical;
+                        else if (c.deltaPct < -15) fill = STATUS.good;
+                      }
+                      return <Cell key={c.category_name} fill={fill} />;
+                    })}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+
+          <div className="mt-6 grid grid-cols-3 gap-4">
             <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.08] p-5">
               <p className="text-xs font-medium uppercase tracking-wide text-emerald-400">
                 Avg. salary / mo
@@ -284,79 +338,6 @@ export default function Dashboard() {
                 <span className="font-medium text-white">{formatCurrency(flexibleTotal)}</span>
               </span>
             </div>
-          </div>
-
-          <div className="mt-6 rounded-2xl bg-[#161b22] p-6 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-sm font-semibold text-white">Breakdown</h2>
-                <p className="mt-0.5 text-xs text-[#8b949e]">
-                  Total: <span className="font-medium text-[#c9d1d9]">{formatCurrency(filteredTotal)}</span>
-                  {typeFilter === "expense" && (
-                    <span className="ml-2 text-[#8b949e]">
-                      red = above your 6-month average · green = below
-                    </span>
-                  )}
-                </p>
-              </div>
-              <div className="flex gap-1 rounded-full bg-[#21262d] p-0.5">
-                {FILTERS.map((f) => (
-                  <button
-                    key={f.key}
-                    onClick={() => setTypeFilter(f.key)}
-                    className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
-                      typeFilter === f.key
-                        ? "bg-[#30363d] text-emerald-400 shadow-sm"
-                        : "text-[#8b949e]"
-                    }`}
-                  >
-                    {f.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {categoryData.length === 0 ? (
-              <p className="mt-4 text-sm text-[#8b949e]">Nothing here for this month.</p>
-            ) : (
-              <ResponsiveContainer width="100%" height={Math.max(200, categoryData.length * 36)}>
-                <BarChart data={categoryData} layout="vertical" margin={{ left: 24, top: 12 }}>
-                  <CartesianGrid horizontal={false} stroke={CHART_INK.gridline} />
-                  <XAxis
-                    type="number"
-                    tickFormatter={(v) => formatCurrency(v)}
-                    stroke={CHART_INK.muted}
-                    fontSize={12}
-                  />
-                  <YAxis
-                    type="category"
-                    dataKey="category_name"
-                    width={110}
-                    stroke={CHART_INK.muted}
-                    fontSize={12}
-                  />
-                  <Tooltip
-                    formatter={(v: number, _n, item) => {
-                      const pct = item?.payload?.deltaPct;
-                      const suffix =
-                        pct != null ? ` (${pct > 0 ? "+" : ""}${pct.toFixed(0)}% vs avg)` : "";
-                      return formatCurrency(v) + suffix;
-                    }}
-                  />
-                  <Bar dataKey="total" radius={[0, 4, 4, 0]}>
-                    {categoryData.map((c) => {
-                      let fill: string = CATEGORICAL[0];
-                      if (c.kind === "income") {
-                        fill = CATEGORICAL[2];
-                      } else if (typeFilter === "expense" && c.deltaPct != null) {
-                        if (c.deltaPct > 15) fill = STATUS.critical;
-                        else if (c.deltaPct < -15) fill = STATUS.good;
-                      }
-                      return <Cell key={c.category_name} fill={fill} />;
-                    })}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            )}
           </div>
 
           <div className="mt-6 rounded-2xl bg-[#161b22] p-6 shadow-sm">

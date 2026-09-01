@@ -12,7 +12,9 @@ class Holding(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     symbol: Mapped[str] = mapped_column(String)  # ticker (VOO, AAPL) or crypto symbol (BTC, ETH)
     name: Mapped[str | None] = mapped_column(String, nullable=True)
-    asset_type: Mapped[str] = mapped_column(String)  # stock | etf | crypto | cash | workplace_rrsp
+    asset_type: Mapped[str] = mapped_column(
+        String
+    )  # stock | etf | crypto | cash | workplace_rrsp | rewards_points
     quantity: Mapped[float] = mapped_column(Float)
     average_cost: Mapped[float | None] = mapped_column(Float, nullable=True)  # per-unit, in quote currency
     include_in_net_worth: Mapped[bool] = mapped_column(Boolean, default=True)

@@ -16,6 +16,7 @@ const ASSET_TYPES = [
   { key: "crypto", label: "Crypto" },
   { key: "cash", label: "Cash" },
   { key: "workplace_rrsp", label: "Workplace RRSP (locked)" },
+  { key: "rewards_points", label: "Rewards points" },
 ] as const;
 
 const MANUAL_VALUE_TYPES = new Set(["cash", "workplace_rrsp"]);
@@ -27,6 +28,7 @@ const ASSET_CLASS_COLOR: Record<string, string> = {
   etf: CATEGORICAL[2],
   crypto: CATEGORICAL[3],
   investment: CATEGORICAL[4],
+  rewards_points: CATEGORICAL[5],
   other: CHART_INK.muted,
 };
 
@@ -36,6 +38,7 @@ const ASSET_CLASS_LABEL: Record<string, string> = {
   etf: "ETF",
   crypto: "Crypto",
   investment: "Registered / investment account",
+  rewards_points: "Rewards points",
   other: "Other",
 };
 
@@ -62,12 +65,19 @@ function HoldingForm({
 }) {
   const [values, setValues] = useState(initial);
   const isManualValue = MANUAL_VALUE_TYPES.has(values.asset_type);
+  const isPoints = values.asset_type === "rewards_points";
 
   return (
     <div className="space-y-3 rounded-2xl bg-[#161b22] p-4">
       <div className="grid grid-cols-6 gap-3">
         <input
-          placeholder={isManualValue ? "Label (e.g. TFSA, RRSP, Kraken)" : "Symbol (e.g. VOO, BTC)"}
+          placeholder={
+            isPoints
+              ? "Program (e.g. AMEX MR)"
+              : isManualValue
+                ? "Label (e.g. TFSA, RRSP, Kraken)"
+                : "Symbol (e.g. VOO, BTC)"
+          }
           value={values.symbol}
           onChange={(e) => setValues({ ...values, symbol: e.target.value.toUpperCase() })}
           className="col-span-2 rounded-lg border-0 bg-[#21262d] px-3 py-2 text-sm text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -92,7 +102,7 @@ function HoldingForm({
           ))}
         </select>
         <input
-          placeholder={isManualValue ? "Amount (CAD)" : "Quantity"}
+          placeholder={isManualValue ? "Amount (CAD)" : isPoints ? "Points balance" : "Quantity"}
           type="number"
           step="any"
           value={values.quantity}
@@ -100,7 +110,7 @@ function HoldingForm({
           className="rounded-lg border-0 bg-[#21262d] px-3 py-2 text-sm text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
         />
         <input
-          placeholder={isManualValue ? "N/A" : "Avg. cost / unit"}
+          placeholder={isManualValue ? "N/A" : isPoints ? "Value/point CAD (def. 0.01)" : "Avg. cost / unit"}
           type="number"
           step="any"
           value={isManualValue ? "" : values.average_cost}
@@ -547,7 +557,8 @@ function HoldingRow({
         </p>
         <p className="truncate text-xs text-[#8b949e]">
           {holding.name ?? ""}
-          {!isCash && ` · ${holding.quantity} units`}
+          {!isCash &&
+            ` · ${holding.quantity.toLocaleString()} ${holding.asset_type === "rewards_points" ? "points" : "units"}`}
           {holding.price_unavailable && " · live price unavailable"}
         </p>
       </div>

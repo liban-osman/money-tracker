@@ -99,7 +99,7 @@ export interface Holding {
   id: number;
   symbol: string;
   name: string | null;
-  asset_type: "stock" | "etf" | "crypto" | "cash" | "workplace_rrsp";
+  asset_type: "stock" | "etf" | "crypto" | "cash" | "workplace_rrsp" | "rewards_points";
   quantity: number;
   average_cost: number | null;
   include_in_net_worth: boolean;

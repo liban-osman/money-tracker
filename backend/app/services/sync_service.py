@@ -95,9 +95,22 @@ def _remove_transaction(db: Session, plaid_transaction_id: str) -> None:
     ).delete()
 
 
+def _refresh_account_balances(db: Session, item: PlaidItem, account_by_plaid_id: dict[str, Account]) -> None:
+    for account_data in plaid_service.get_accounts(item.access_token):
+        account = account_by_plaid_id.get(account_data["account_id"])
+        if account is None:
+            continue
+        balances = account_data.get("balances", {})
+        account.current_balance = balances.get("current")
+        account.available_balance = balances.get("available")
+        account.credit_limit = balances.get("limit")
+
+
 def sync_item_transactions(db: Session, item: PlaidItem) -> dict:
     accounts = db.query(Account).filter(Account.plaid_item_id == item.id).all()
     account_by_plaid_id = {a.plaid_account_id: a for a in accounts}
+
+    _refresh_account_balances(db, item, account_by_plaid_id)
 
     cursor = item.cursor
     added = modified = removed = 0
