@@ -20,16 +20,23 @@ def _with_live_price(holding: Holding) -> HoldingResponse:
         data.market_value_cad = round(holding.quantity, 2)
         return data
 
-    if holding.asset_type == "rewards_points":
-        # Quantity is the points balance; average_cost is repurposed as your
-        # estimated redemption value per point (e.g. Amex MR ~= $0.01 CAD),
-        # since points have no public market price and no cost basis.
-        value_per_point = holding.average_cost if holding.average_cost is not None else 0.01
-        data.price_cad = round(value_per_point, 4)
-        data.market_value_cad = round(holding.quantity * value_per_point, 2)
-        return data
-
-    price = market_data_service.price_in_cad(holding.symbol, holding.asset_type)
+    # fx tracks whichever conversion (if any) got the live price into CAD, so
+    # the same rate can be applied to average_cost below — it's entered in
+    # the stock's own quote currency (e.g. USD for a US ticker), so cost
+    # basis needs the identical conversion as market value or the two end up
+    # in different currencies and gain/loss comes out wrong.
+    fx = 1.0
+    if holding.asset_type == "crypto":
+        price = market_data_service.get_crypto_price_cad(holding.symbol)
+    else:
+        quote = market_data_service.get_equity_quote(holding.symbol)
+        if quote is None:
+            price = None
+        elif quote["currency"] == "CAD":
+            price = quote["price"]
+        else:
+            fx = market_data_service.get_usd_cad_rate()
+            price = quote["price"] * fx if fx is not None else None
 
     if price is None:
         data.price_unavailable = True
@@ -38,7 +45,7 @@ def _with_live_price(holding: Holding) -> HoldingResponse:
     data.price_cad = round(price, 2)
     data.market_value_cad = round(price * holding.quantity, 2)
     if holding.average_cost is not None:
-        cost_basis = holding.average_cost * holding.quantity
+        cost_basis = holding.average_cost * fx * holding.quantity
         data.cost_basis_cad = round(cost_basis, 2)
         gain_loss = data.market_value_cad - cost_basis
         data.gain_loss_cad = round(gain_loss, 2)

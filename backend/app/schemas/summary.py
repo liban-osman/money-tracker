@@ -61,3 +61,18 @@ class RecurringMerchant(BaseModel):
     average_amount: float
     last_amount: float
     last_date: str
+
+
+class BillItem(BaseModel):
+    label: str
+    frequency: str  # "monthly" | "annual"
+    monthly_amount: float
+    charge_count: int
+    last_amount: float | None
+    last_date: str | None
+    active: bool
+
+
+class MonthlyBillsResponse(BaseModel):
+    items: list[BillItem]
+    total_monthly: float

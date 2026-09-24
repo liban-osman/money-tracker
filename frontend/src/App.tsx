@@ -3,16 +3,18 @@ import { useState } from "react";
 import SyncButton from "./components/SyncButton";
 import Accounts from "./pages/Accounts";
 import Assets from "./pages/Assets";
+import Bills from "./pages/Bills";
 import Dashboard from "./pages/Dashboard";
 import Insights from "./pages/Insights";
 import Transactions from "./pages/Transactions";
 
-type Tab = "dashboard" | "transactions" | "insights" | "assets" | "accounts";
+type Tab = "dashboard" | "transactions" | "insights" | "bills" | "assets" | "accounts";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "dashboard", label: "Dashboard" },
   { key: "transactions", label: "Transactions" },
   { key: "insights", label: "Insights" },
+  { key: "bills", label: "Monthly Expenses" },
   { key: "assets", label: "Assets" },
   { key: "accounts", label: "Accounts" },
 ];
@@ -49,6 +51,7 @@ export default function App() {
       {tab === "dashboard" && <Dashboard />}
       {tab === "transactions" && <Transactions />}
       {tab === "insights" && <Insights />}
+      {tab === "bills" && <Bills />}
       {tab === "assets" && <Assets />}
       {tab === "accounts" && <Accounts />}
     </div>

@@ -16,7 +16,6 @@ const ASSET_TYPES = [
   { key: "crypto", label: "Crypto" },
   { key: "cash", label: "Cash" },
   { key: "workplace_rrsp", label: "Workplace RRSP (locked)" },
-  { key: "rewards_points", label: "Rewards points" },
 ] as const;
 
 const MANUAL_VALUE_TYPES = new Set(["cash", "workplace_rrsp"]);
@@ -28,7 +27,6 @@ const ASSET_CLASS_COLOR: Record<string, string> = {
   etf: CATEGORICAL[2],
   crypto: CATEGORICAL[3],
   investment: CATEGORICAL[4],
-  rewards_points: CATEGORICAL[5],
   other: CHART_INK.muted,
 };
 
@@ -38,7 +36,6 @@ const ASSET_CLASS_LABEL: Record<string, string> = {
   etf: "ETF",
   crypto: "Crypto",
   investment: "Registered / investment account",
-  rewards_points: "Rewards points",
   other: "Other",
 };
 
@@ -65,19 +62,12 @@ function HoldingForm({
 }) {
   const [values, setValues] = useState(initial);
   const isManualValue = MANUAL_VALUE_TYPES.has(values.asset_type);
-  const isPoints = values.asset_type === "rewards_points";
 
   return (
     <div className="space-y-3 rounded-2xl bg-[#161b22] p-4">
       <div className="grid grid-cols-6 gap-3">
         <input
-          placeholder={
-            isPoints
-              ? "Program (e.g. AMEX MR)"
-              : isManualValue
-                ? "Label (e.g. TFSA, RRSP, Kraken)"
-                : "Symbol (e.g. VOO, BTC)"
-          }
+          placeholder={isManualValue ? "Label (e.g. TFSA, RRSP, Kraken)" : "Symbol (e.g. VOO, BTC)"}
           value={values.symbol}
           onChange={(e) => setValues({ ...values, symbol: e.target.value.toUpperCase() })}
           className="col-span-2 rounded-lg border-0 bg-[#21262d] px-3 py-2 text-sm text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -102,7 +92,7 @@ function HoldingForm({
           ))}
         </select>
         <input
-          placeholder={isManualValue ? "Amount (CAD)" : isPoints ? "Points balance" : "Quantity"}
+          placeholder={isManualValue ? "Amount (CAD)" : "Quantity"}
           type="number"
           step="any"
           value={values.quantity}
@@ -110,7 +100,7 @@ function HoldingForm({
           className="rounded-lg border-0 bg-[#21262d] px-3 py-2 text-sm text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
         />
         <input
-          placeholder={isManualValue ? "N/A" : isPoints ? "Value/point CAD (def. 0.01)" : "Avg. cost / unit"}
+          placeholder={isManualValue ? "N/A" : "Avg. cost / unit"}
           type="number"
           step="any"
           value={isManualValue ? "" : values.average_cost}
@@ -240,6 +230,22 @@ export default function Assets() {
   const donutTotal = donut.reduce((s, d) => s + d.value, 0);
   const legendClasses = Array.from(new Set(donut.map((d) => d.assetType)));
 
+  const tfsaDonut = useMemo(() => {
+    const positions = holdings
+      .filter((h) => (h.note ?? "").toLowerCase().includes("tfsa") && (h.market_value_cad ?? 0) > 0)
+      .map((h) => ({ name: h.symbol, value: h.market_value_cad! }))
+      .sort((a, b) => b.value - a.value);
+
+    if (positions.length <= MAX_DONUT_SLICES) return positions;
+
+    const head = positions.slice(0, MAX_DONUT_SLICES - 1);
+    const tail = positions.slice(MAX_DONUT_SLICES - 1);
+    const otherValue = tail.reduce((s, p) => s + p.value, 0);
+    return [...head, { name: "Other", value: otherValue }];
+  }, [holdings]);
+
+  const tfsaTotal = tfsaDonut.reduce((s, d) => s + d.value, 0);
+
   return (
     <div className="p-8">
       <div className="flex items-center justify-between">
@@ -342,6 +348,71 @@ export default function Assets() {
                       </div>
                     ))}
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {tfsaDonut.length > 0 && (
+            <div className="mt-6 rounded-2xl bg-[#161b22] p-6 shadow-sm">
+              <h2 className="text-sm font-semibold text-white">TFSA breakdown</h2>
+              <p className="mt-0.5 text-xs text-[#8b949e]">
+                Your stock positions inside the TFSA, by share of TFSA value
+                {tfsaDonut.some((d) => d.name === "Other") &&
+                  ` (top ${MAX_DONUT_SLICES - 1}, rest folded into "Other")`}
+              </p>
+
+              <div className="mt-2 grid grid-cols-2 gap-6">
+                <div className="relative">
+                  <ResponsiveContainer width="100%" height={320}>
+                    <PieChart margin={{ top: 24, right: 0, bottom: 24, left: 0 }}>
+                      <Pie
+                        data={tfsaDonut}
+                        dataKey="value"
+                        nameKey="name"
+                        innerRadius={65}
+                        outerRadius={100}
+                        paddingAngle={1.5}
+                        strokeWidth={2}
+                        stroke={UI.surface}
+                        label={({ value }) =>
+                          value / tfsaTotal >= 0.08 ? `${Math.round((value / tfsaTotal) * 100)}%` : ""
+                        }
+                        labelLine={false}
+                      >
+                        {tfsaDonut.map((d, i) => (
+                          <Cell key={d.name} fill={CATEGORICAL[i % CATEGORICAL.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(value: number, _name, entry) => [
+                          `${formatCurrency(value)} (${((value / tfsaTotal) * 100).toFixed(1)}%)`,
+                          entry?.payload?.name,
+                        ]}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                    <p className="text-xs uppercase tracking-wide text-[#8b949e]">TFSA total</p>
+                    <p className="text-lg font-semibold text-white">{formatCurrency(tfsaTotal)}</p>
+                  </div>
+                </div>
+
+                <div className="flex flex-col justify-center gap-2">
+                  {tfsaDonut.map((d, i) => (
+                    <div key={d.name} className="flex items-center justify-between text-sm">
+                      <span className="flex min-w-0 items-center gap-2">
+                        <span
+                          className="h-2.5 w-2.5 shrink-0 rounded-full"
+                          style={{ backgroundColor: CATEGORICAL[i % CATEGORICAL.length] }}
+                        />
+                        <span className="truncate text-[#c9d1d9]">{d.name}</span>
+                      </span>
+                      <span className="ml-2 shrink-0 font-medium text-white">
+                        {formatCurrency(d.value)}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -557,8 +628,7 @@ function HoldingRow({
         </p>
         <p className="truncate text-xs text-[#8b949e]">
           {holding.name ?? ""}
-          {!isCash &&
-            ` · ${holding.quantity.toLocaleString()} ${holding.asset_type === "rewards_points" ? "points" : "units"}`}
+          {!isCash && ` · ${holding.quantity} units`}
           {holding.price_unavailable && " · live price unavailable"}
         </p>
       </div>

@@ -99,7 +99,7 @@ export interface Holding {
   id: number;
   symbol: string;
   name: string | null;
-  asset_type: "stock" | "etf" | "crypto" | "cash" | "workplace_rrsp" | "rewards_points";
+  asset_type: "stock" | "etf" | "crypto" | "cash" | "workplace_rrsp";
   quantity: number;
   average_cost: number | null;
   include_in_net_worth: boolean;
@@ -251,6 +251,25 @@ export function getMonthlyHistory(): Promise<TrendPoint[]> {
 
 export function getRecurringExpenses(minMonths = 3): Promise<RecurringMerchant[]> {
   return request(`/summary/recurring?min_months=${minMonths}`);
+}
+
+export interface BillItem {
+  label: string;
+  frequency: "monthly" | "annual";
+  monthly_amount: number;
+  charge_count: number;
+  last_amount: number | null;
+  last_date: string | null;
+  active: boolean;
+}
+
+export interface MonthlyBillsResponse {
+  items: BillItem[];
+  total_monthly: number;
+}
+
+export function getMonthlyBills(): Promise<MonthlyBillsResponse> {
+  return request("/summary/monthly-bills");
 }
 
 export function listHoldings(): Promise<Holding[]> {

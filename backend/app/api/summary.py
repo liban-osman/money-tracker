@@ -12,11 +12,13 @@ from app.schemas.summary import (
     CategoryAverage,
     CategoryBreakdown,
     CategoryTrendPoint,
+    MonthlyBillsResponse,
     MonthlySummaryResponse,
     RecurringMerchant,
     TopMerchant,
     TrendPoint,
 )
+from app.services import recurring_bills
 
 router = APIRouter(prefix="/summary", tags=["summary"])
 
@@ -278,6 +280,16 @@ def recurring_expenses(min_months: int = 3, db: Session = Depends(get_db)) -> li
             )
         )
     return sorted(results, key=lambda r: r.average_amount, reverse=True)
+
+
+@router.get("/monthly-bills", response_model=MonthlyBillsResponse)
+def monthly_bills(db: Session = Depends(get_db)) -> MonthlyBillsResponse:
+    """A hand-curated list of your actual subscriptions/fixed bills — unlike
+    /recurring, this doesn't try to auto-detect anything, so it doesn't
+    false-positive on frequent-but-irregular spending like a favorite
+    restaurant or gas fill-ups."""
+    items, total_monthly = recurring_bills.compute_bills(db)
+    return MonthlyBillsResponse(items=items, total_monthly=total_monthly)
 
 
 @router.get("/top-merchants", response_model=list[TopMerchant])

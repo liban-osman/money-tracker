@@ -119,20 +119,3 @@ def get_usd_cad_rate() -> float | None:
         return None
     _store(cache_key, {"rate": quote["price"]})
     return quote["price"]
-
-
-def price_in_cad(symbol: str, asset_type: str) -> float | None:
-    """Best-effort live price for a holding, converted to CAD."""
-    if asset_type == "crypto":
-        return get_crypto_price_cad(symbol)
-
-    quote = get_equity_quote(symbol)
-    if quote is None:
-        return None
-    if quote["currency"] == "CAD":
-        return quote["price"]
-
-    fx = get_usd_cad_rate()
-    if fx is None:
-        return None
-    return quote["price"] * fx
