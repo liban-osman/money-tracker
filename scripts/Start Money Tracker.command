@@ -4,6 +4,16 @@
 set -e
 cd "$(dirname "$0")/.."
 
+# If anything below fails, say so and keep the window open — otherwise a
+# failure just closes the Terminal window with no visible explanation.
+on_error() {
+  echo ""
+  echo "!!! Something went wrong (see the message above this line) !!!"
+  echo "Press Return to close this window."
+  read -r
+}
+trap on_error ERR
+
 echo "=== Money Tracker ==="
 echo ""
 
@@ -29,7 +39,8 @@ if [ ! -d ".venv" ]; then
   python3 -m venv .venv
 fi
 source .venv/bin/activate
-pip install -q -r requirements.txt
+echo "Installing backend dependencies (first time only, may take a minute)..."
+pip install -r requirements.txt
 
 if [ ! -f ".env" ]; then
   cp .env.example .env
@@ -56,8 +67,8 @@ cd ..
 # --- 3. Frontend setup ---
 cd frontend
 if [ ! -d "node_modules" ]; then
-  echo "Setting up the app itself (first time only, may take a minute)..."
-  npm install --silent
+  echo "Setting up the app itself (first time only, may take a minute or two)..."
+  npm install
 fi
 npm run dev &
 FRONTEND_PID=$!
@@ -70,7 +81,13 @@ cleanup() {
 }
 trap cleanup EXIT
 
-sleep 3
+echo "Waiting for the app to start..."
+for i in $(seq 1 30); do
+  if curl -s -o /dev/null "http://localhost:5173"; then
+    break
+  fi
+  sleep 1
+done
 open "http://localhost:5173"
 
 echo ""
